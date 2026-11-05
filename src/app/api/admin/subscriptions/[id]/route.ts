@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getOwnerSession } from "@/lib/auth/session";
 import { listPanels } from "@/lib/panels/store";
 import { getPasarGuardSubscriptionUrl } from "@/lib/panels/pasarguard";
-import { updateMasterSubscriptionPanel } from "@/lib/subscriptions/store";
+import { listMasterSubscriptions, updateMasterSubscriptionPanel } from "@/lib/subscriptions/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,9 +20,12 @@ export async function PATCH(request: NextRequest, context: { params: { id: strin
   if (!panels.some(panel => panel.id === parsed.data.panelId)) return NextResponse.json({ error: "Selected panel is not configured." }, { status: 400 });
   try {
     // Confirm that this username exists on the destination panel before switching.
-    const subscriptions = await import("@/lib/subscriptions/store").then(module => module.listMasterSubscriptions());
+    const subscriptions = await listMasterSubscriptions();
     const current = subscriptions.find(item => item.id === context.params.id);
     if (!current) return NextResponse.json({ error: "Master subscription not found." }, { status: 404 });
+    if (!(current.panelIds || [current.panelId]).includes(parsed.data.panelId)) {
+      return NextResponse.json({ error: "This panel is not attached to the master subscription." }, { status: 400 });
+    }
     await getPasarGuardSubscriptionUrl(parsed.data.panelId, current.username);
     const updated = await updateMasterSubscriptionPanel(current.id, parsed.data.panelId);
     return NextResponse.json({ subscription: updated }, { headers: { "Cache-Control": "no-store" } });
