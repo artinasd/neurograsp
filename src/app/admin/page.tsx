@@ -4,10 +4,10 @@ import { Layers3, ShieldCheck, Wallet, Activity, ArrowUpRight } from "lucide-rea
 import { getOwnerSession } from "@/lib/auth/session";
 
 const sections = [
-  { icon: Layers3, title: "PasarGuard panels", description: "Connect original panels, configure groups, and test access.", status: "Integration phase" },
-  { icon: Wallet, title: "Reseller balance", description: "Available funds, reserved funds, and immutable transaction history.", status: "Ledger phase" },
-  { icon: Activity, title: "Provisioning operations", description: "Track each panel outcome and reconcile uncertain operations.", status: "Provisioning phase" },
-  { icon: ShieldCheck, title: "Master subscriptions", description: "Stable customer links with an owner-controlled active panel.", status: "Subscription phase" }
+  { icon: Layers3, title: "PasarGuard panels", description: "Connect original panels, configure groups, and test access.", status: "Connection management" },
+  { icon: Wallet, title: "Reseller balance", description: "Credit the fixed reseller wallet, reserve order funds, and inspect the immutable ledger.", status: "Owner ledger" },
+  { icon: Activity, title: "Provisioning operations", description: "Track per-panel outcomes and reconcile uncertain provisioning.", status: "Review & reconcile" },
+  { icon: ShieldCheck, title: "Master subscriptions", description: "Stable secret customer URLs with an owner-controlled active upstream.", status: "Customer links" }
 ];
 
 export default async function AdminPage() {
@@ -29,7 +29,7 @@ export default async function AdminPage() {
       <section className="mx-auto max-w-6xl pt-12">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Control center</p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight">Owner dashboard</h1>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">The app foundation is in place. Core infrastructure modules are being delivered in the next milestones.</p>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Owner workflows are implemented in stages. Validate upstream compatibility and deployment configuration before using real customer accounts.</p>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {sections.map(({ icon: Icon, title, description, status }) => (
