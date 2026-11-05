@@ -74,6 +74,11 @@ export async function createMasterSubscription(input: { username: string; panelI
     const records = await read();
     const actual = records[actualId];
     if (!actual) throw new Error("Could not retrieve idempotent master subscription.");
+    const requestedPanels = [...panelIds].sort().join("|");
+    const actualPanels = [...(actual.panelIds || [actual.panelId])].sort().join("|");
+    if (actual.username !== input.username || actual.panelId !== input.panelId || actualPanels !== requestedPanels) {
+      throw new Error("MASTER_SUBSCRIPTION_OPERATION_REUSED_WITH_DIFFERENT_INPUT");
+    }
     return { subscription: summary(actual), token: secretUrlToken(actual) };
   }
 
