@@ -1,5 +1,5 @@
 import { lookup } from "node:dns/promises";
-import { isIP } from "node:net";
+import { isIP, type LookupFunction } from "node:net";
 
 function isPrivateIPv4(ip: string) {
   const p = ip.split(".").map(Number);
@@ -15,6 +15,23 @@ function isPrivateIPv4(ip: string) {
     (a === 203 && b === 0 && c === 113);
 }
 
+
+/**
+ * Resolve only vetted public IPv4 addresses at connection time. The request
+ * retains the hostname for Host and TLS certificate validation.
+ */
+export const publicIPv4Lookup: LookupFunction = ((hostname: string, options: unknown, callback: (...args: unknown[]) => void) => {
+  void lookup(hostname, { all: true, verbatim: true }).then(addresses => {
+    const safe = addresses.filter(record => record.family === 4 && !isPrivateIPv4(record.address));
+    if (!safe.length || safe.length !== addresses.length) {
+      callback(Object.assign(new Error("Panel hostname resolves to a private or unsupported address."), { code: "EACCES" }));
+      return;
+    }
+    const all = typeof options === "object" && options !== null && "all" in options && options.all === true;
+    if (all) callback(null, safe);
+    else callback(null, safe[0].address, safe[0].family);
+  }).catch(() => callback(Object.assign(new Error("Panel hostname could not be resolved."), { code: "ENOTFOUND" })));
+}) as LookupFunction;
 export async function validatePanelBaseUrl(input: string): Promise<string> {
   let url: URL;
   try { url = new URL(input.trim()); } catch { throw new Error("Enter a valid panel URL."); }
