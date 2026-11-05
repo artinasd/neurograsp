@@ -22,6 +22,15 @@ export async function createOperation(input: Omit<ProvisioningOperation, "state"
   const result = await redis.eval<string>(script, [operationKey(input.id), idempotencyKey(input.idempotencyKey)], [JSON.stringify(operation)]);
   const parsed = typeof result === "string" ? JSON.parse(result) as ProvisioningOperation : null;
   if (!parsed) throw new Error("Could not persist provisioning operation.");
+  // Reusing an idempotency key with a different order payload must be rejected,
+  // not silently mapped onto the first order.
+  if (parsed.idempotencyKey !== input.idempotencyKey ||
+      parsed.username !== input.username ||
+      parsed.reservationId !== input.reservationId ||
+      parsed.panelIds.join("|") !== input.panelIds.join("|") ||
+      JSON.stringify(parsed.snapshot) !== JSON.stringify(input.snapshot)) {
+    throw new Error("IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_INPUT");
+  }
   return parsed;
 }
 
