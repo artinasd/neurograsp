@@ -24,7 +24,7 @@ if prior then
   local previous = cjson.decode(prior)
   local previousReservation = previous.reservation
   local intended = cjson.decode(ARGV[2])
-  if not previousReservation or previousReservation.id ~= intended.id or previousReservation.resellerId ~= intended.resellerId or tonumber(previousReservation.amountMinor) ~= tonumber(intended.amountMinor) then
+  if not previousReservation or previousReservation.id ~= intended.id or previousReservation.resellerId ~= intended.resellerId or tonumber(previousReservation.amountMinor) ~= tonumber(intended.amountMinor) or previousReservation.memo ~= intended.memo then
     return cjson.encode({ok=false, code="IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_INPUT"})
   end
   return prior
