@@ -67,3 +67,19 @@ export async function getMasterSubscriptionByToken(token: string): Promise<{ id:
   const hash = hashToken(token);
   return await redis.get<{ id: string; username: string; panelId: string }>(tokenKey(hash)) ?? null;
 }
+
+export async function rotateMasterSubscriptionToken(id: string) {
+  const records = await read();
+  const existing = records[id];
+  if (!existing) return null;
+  const oldHash = existing.tokenHash;
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = hashToken(token);
+  existing.tokenHash = tokenHash;
+  existing.updatedAt = Date.now();
+  records[id] = existing;
+  await redis.set(LIST_KEY, records);
+  await redis.del(tokenKey(oldHash));
+  await redis.set(tokenKey(tokenHash), { id, username: existing.username, panelId: existing.panelId });
+  return { subscription: summary(existing), token };
+}
