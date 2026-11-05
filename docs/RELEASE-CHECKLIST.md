@@ -31,7 +31,7 @@ Do not connect live customer orders until these checks pass against a non-produc
 ## Customer URL
 
 - [ ] Compare the returned subscription body and content-type/profile headers with the selected upstream for each supported client format.
-- [ ] Confirm the payload is not decoded, re-encoded, converted, or merged.
+- [ ] Confirm the payload is not decoded, re-encoded, converted, or merged; test compressed upstream responses and verify `content-encoding` and `content-length` remain consistent.
 - [ ] Verify the active-panel switch changes the upstream response while keeping the customer URL unchanged.
 - [ ] Verify switching to a panel not attached to the customer is rejected.
 - [ ] Rotate the secret link; confirm the old URL returns 404 and the new URL works.
