@@ -19,7 +19,7 @@ export async function createOperation(input: Omit<ProvisioningOperation, "state"
     redis.call("SET", KEYS[2], ARGV[1])
     return ARGV[1]
   `;
-  const result = await redis.eval<string>(script, [operationKey(input.id), idempotencyKey(input.idempotencyKey)], [JSON.stringify(operation)]);
+  const result = await redis.eval(script, [operationKey(input.id), idempotencyKey(input.idempotencyKey)], [JSON.stringify(operation)]);
   const parsed = typeof result === "string" ? JSON.parse(result) as ProvisioningOperation : null;
   if (!parsed) throw new Error("Could not persist provisioning operation.");
   // Reusing an idempotency key with a different order payload must be rejected,
@@ -55,7 +55,7 @@ export async function updatePanelResult(operationId: string, result: PanelOperat
     redis.call("SET", KEYS[1], cjson.encode(op))
     return cjson.encode({ok=true, operation=op})
   `;
-  const response = await redis.eval<string>(script, [operationKey(operationId)], [result.panelId, JSON.stringify(result), state, String(Date.now())]);
+  const response = await redis.eval(script, [operationKey(operationId)], [result.panelId, JSON.stringify(result), state, String(Date.now())]);
   const parsed = typeof response === "string" ? JSON.parse(response) as { ok: boolean; operation?: ProvisioningOperation; code?: string } : null;
   if (!parsed?.ok || !parsed.operation) throw new Error(parsed?.code || "Could not update panel operation.");
   return parsed.operation;
@@ -71,7 +71,7 @@ export async function setOperationState(operationId: string, state: Provisioning
     redis.call("SET", KEYS[1], cjson.encode(op))
     return cjson.encode({ok=true, operation=op})
   `;
-  const response = await redis.eval<string>(script, [operationKey(operationId)], [state, String(Date.now())]);
+  const response = await redis.eval(script, [operationKey(operationId)], [state, String(Date.now())]);
   const parsed = typeof response === "string" ? JSON.parse(response) as { ok: boolean; operation?: ProvisioningOperation; code?: string } : null;
   if (!parsed?.ok || !parsed.operation) throw new Error(parsed?.code || "Could not update operation state.");
   return parsed.operation;
