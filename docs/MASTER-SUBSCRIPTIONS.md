@@ -2,8 +2,8 @@
 
 ## Owner workflow
 
-- Visit `/admin/subscriptions`.
-- Provision a customer from `/admin/provision/new`, using an existing wallet reservation and selecting the panels to attach.
+- Owner wallet workflow is available at `/admin/wallet`: record manual funding as a ledger credit, then reserve an amount for an order. The UI/API uses integer minor units; configure the actual currency denomination in the operating policy before use.
+- Provision a customer from `/admin/provision/new`, using the wallet reservation and selecting the panels to attach. The wallet page can hand the reservation ID into the form.
 - The provisioning runner creates/verifies the exact same username, quota, expiration, and status on every selected PasarGuard panel.
 - Once all panels are confirmed, the system creates a master subscription record keyed to the operation idempotently and returns the stable URL.
 - The master record tracks its attached panel IDs and one active panel. Switching is permitted only among attached panels after the exact user and native subscription URL are verified.
