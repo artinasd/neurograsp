@@ -45,7 +45,7 @@ export default function OperationsPage() {
   }
 
   return <main className="min-h-screen px-5 py-8 sm:px-10"><div className="mx-auto max-w-5xl">
-    <header className="flex items-center justify-between"><Link href="/admin" className="text-sm font-semibold text-brand-700">← Back to owner dashboard</Link><span className="text-xs text-slate-500">Provisioning operations</span></header>
+    <header className="flex items-center justify-between"><Link href="/admin" className="text-sm font-semibold text-brand-700">← Back to owner dashboard</Link><Link href="/admin/provision/new" className="rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-white">New provision</Link></header>
     <h1 className="mt-10 text-3xl font-semibold tracking-tight">Operation review</h1>
     <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">Look up an operation by its ID. Reconcile only after reviewing the remote outcome; unresolved reservations remain held.</p>
     <div className="mt-6 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-5 sm:flex-row">
