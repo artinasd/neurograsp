@@ -67,7 +67,7 @@ Redis cannot atomically include an external PasarGuard request. Durability, idem
 
 - Public route /sub/<opaque-token> resolves a token hash to the username and selected upstream panel.
 - Preserve the upstream response body/status and selected subscription/profile headers without format conversion.
-- Do not relay client Authorization, cookies, or HWID/device headers; native delivery is otherwise not rewritten.
+- Never relay client Authorization or cookies. Forward the optional PasarGuard HWID/device identity headers unchanged so HWID behavior remains controlled by the upstream panel.
 - Switching is allowed only after the exact username and subscription URL are verified on the destination panel. The master token remains stable.
 - If selected source is unavailable, return an explicit service error rather than a successful empty config. Default behavior is no silent fallback.
 - Current implementation supports one selected panel per master token; multi-panel provisioning and customer creation orchestration are separate and not yet complete.
