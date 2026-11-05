@@ -59,14 +59,15 @@ export async function runProvisioningOperation(operationId: string): Promise<Pro
 
   const states = Object.values(operation.results).map(result => result.state);
   if (states.length && states.every(state => state === "confirmed")) {
-    operation = await setOperationState(operationId, "completed");
+    // Settle the reservation first. The ledger action is idempotent, so a retry
+    // after a crash between settlement and state persistence is safe.
     if (operation.reservationId) await commitReservation(operation.reservationId, "operation:" + operation.id + ":commit");
-    return operation;
+    return setOperationState(operationId, "completed");
   }
   if (states.length && states.every(state => state === "failed")) {
-    operation = await setOperationState(operationId, "failed");
+    // Release only after every panel outcome is confirmed failed.
     if (operation.reservationId) await releaseReservation(operation.reservationId, "operation:" + operation.id + ":release");
-    return operation;
+    return setOperationState(operationId, "failed");
   }
   if (states.some(state => state === "uncertain" || state === "in_flight")) return setOperationState(operationId, "uncertain");
   return setOperationState(operationId, "partial");
