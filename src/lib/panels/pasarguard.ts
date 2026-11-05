@@ -79,7 +79,7 @@ export class PanelUncertainError extends Error {
   constructor(message: string) { super(message); this.name = "PanelUncertainError"; }
 }
 
-async function auth(id: string) {
+export async function auth(id: string) {
   const panel = await getPanelCredentials(id);
   if (!panel) throw new Error("Panel connection not found.");
   const baseUrl = await validatePanelBaseUrl(panel.baseUrl);
@@ -101,7 +101,7 @@ async function auth(id: string) {
   return { panel, baseUrl, token };
 }
 
-async function api(id: string, path: string, init: RequestInit = {}) {
+export async function api(id: string, path: string, init: RequestInit = {}) {
   const { baseUrl, token } = await auth(id);
   const url = new URL(path, baseUrl + "/");
   if (url.origin !== new URL(baseUrl).origin) throw new Error("Invalid PasarGuard API path.");
