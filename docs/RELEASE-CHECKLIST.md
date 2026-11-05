@@ -44,3 +44,4 @@ Do not connect live customer orders until these checks pass against a non-produc
 - [ ] Add public-route rate limiting/abuse monitoring before broad customer rollout.
 - [ ] Validate SSRF protections against the deployed network topology, including DNS changes/rebinding and public-to-private resolution changes. PasarGuard HTTPS requests now use a connection-time custom DNS lookup that screens resolved addresses and retains the hostname for TLS verification; verify this behavior with controlled DNS tests before release.
 - [ ] Confirm blocked destinations include loopback, private, link-local, reserved, multicast, IPv6, and mixed public/private DNS answers; confirm redirects remain rejected.
+- [ ] Confirm oversized PasarGuard responses are aborted at the 10 MiB limit and ordinary native subscription bodies remain byte-for-byte intact.
