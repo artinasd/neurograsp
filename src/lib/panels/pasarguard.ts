@@ -1,3 +1,5 @@
+import { request as httpsRequest } from "node:https";
+import { publicIPv4Lookup } from "@/lib/panels/url";
 import { getPanelCredentials } from "@/lib/panels/store";
 import { validatePanelBaseUrl } from "@/lib/panels/url";
 
@@ -17,11 +19,43 @@ function extractUsers(value: unknown): JsonRecord[] {
   return [];
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit = {}) {
+async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+  const target = new URL(url);
+  if (target.protocol !== "https:") throw new Error("Only HTTPS panel requests are allowed.");
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    return await fetch(url, { ...init, signal: controller.signal, cache: "no-store", redirect: "error" });
+    const headers = new Headers(init.headers);
+    const requestHeaders: Record<string, string> = {};
+    headers.forEach((value, key) => { requestHeaders[key] = value; });
+    const body = init.body instanceof URLSearchParams ? init.body.toString() :
+      typeof init.body === "string" ? init.body :
+      init.body instanceof Uint8Array ? Buffer.from(init.body) : undefined;
+    const responseBytes = await new Promise<{ status: number; headers: Headers; body: Buffer }>((resolve, reject) => {
+      const req = httpsRequest(target, {
+        method: init.method || "GET",
+        headers: requestHeaders,
+        lookup: publicIPv4Lookup,
+        signal: controller.signal
+      }, response => {
+        const chunks: Buffer[] = [];
+        response.on("data", chunk => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+        response.on("error", reject);
+        response.on("end", () => {
+          const responseHeaders = new Headers();
+          for (const [name, value] of Object.entries(response.headers)) {
+            if (value === undefined) continue;
+            responseHeaders.set(name, Array.isArray(value) ? value.join(", ") : String(value));
+          }
+          resolve({ status: response.statusCode || 502, headers: responseHeaders, body: Buffer.concat(chunks) });
+        });
+      });
+      req.on("error", reject);
+      if (body !== undefined) req.write(body);
+      req.end();
+    });
+    if (responseBytes.status >= 300 && responseBytes.status < 400) throw new Error("Panel redirects are not accepted.");
+    return new Response(responseBytes.body, { status: responseBytes.status, headers: responseBytes.headers });
   } finally { clearTimeout(timer); }
 }
 
