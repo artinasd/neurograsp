@@ -17,7 +17,7 @@ export async function renewOperationLock(operationId: string, token: string) {
     end
     return 0
   `;
-  const result = await redis.eval<number>(script, [lockKey(operationId)], [token, String(LOCK_TTL_SECONDS)]);
+  const result = await redis.eval(script, [lockKey(operationId)], [token, String(LOCK_TTL_SECONDS)]);
   return Number(result) === 1;
 }
 
