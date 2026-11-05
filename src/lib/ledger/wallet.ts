@@ -20,7 +20,15 @@ function parseScriptResult(value: unknown): Record<string, unknown> {
 
 const RESERVE_SCRIPT = `
 local prior = redis.call("GET", KEYS[3])
-if prior then return prior end
+if prior then
+  local previous = cjson.decode(prior)
+  local previousReservation = previous.reservation
+  local intended = cjson.decode(ARGV[2])
+  if not previousReservation or previousReservation.id ~= intended.id or previousReservation.resellerId ~= intended.resellerId or tonumber(previousReservation.amountMinor) ~= tonumber(intended.amountMinor) then
+    return cjson.encode({ok=false, code="IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_INPUT"})
+  end
+  return prior
+end
 if redis.call("EXISTS", KEYS[4]) == 1 then
   return cjson.encode({ok=false, code="RESERVATION_EXISTS"})
 end
@@ -35,6 +43,30 @@ redis.call("SET", KEYS[4], cjson.encode(reservation))
 local entry = cjson.decode(ARGV[3])
 redis.call("HSET", KEYS[2], entry.id, cjson.encode(entry))
 local result = cjson.encode({ok=true, reservation=reservation})
+redis.call("SET", KEYS[3], result)
+return result
+`;
+
+
+const FUND_SCRIPT = `
+local prior = redis.call("GET", KEYS[3])
+if prior then
+  local previous = cjson.decode(prior)
+  local oldEntry = previous.entry
+  local intended = cjson.decode(ARGV[2])
+  if not oldEntry or oldEntry.resellerId ~= intended.resellerId or tonumber(oldEntry.amountMinor) ~= tonumber(intended.amountMinor) or oldEntry.memo ~= intended.memo then
+    return cjson.encode({ok=false, code="IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_INPUT"})
+  end
+  return prior
+end
+local available = tonumber(redis.call("HGET", KEYS[1], "availableMinor") or "0")
+if available > 9007199254740991 - tonumber(ARGV[1]) then
+  return cjson.encode({ok=false, code="WALLET_BALANCE_LIMIT"})
+end
+redis.call("HINCRBY", KEYS[1], "availableMinor", tonumber(ARGV[1]))
+local entry = cjson.decode(ARGV[2])
+redis.call("HSET", KEYS[2], entry.id, cjson.encode(entry))
+local result = cjson.encode({ok=true, entry=entry})
 redis.call("SET", KEYS[3], result)
 return result
 `;
@@ -67,6 +99,37 @@ local result = cjson.encode({ok=true, reservation=reservation})
 redis.call("SET", KEYS[3], result)
 return result
 `;
+
+export async function creditFunds(input: { resellerId: string; amountMinor: number; memo: string; idempotency: string }): Promise<LedgerEntry> {
+  assertPositiveInteger(input.amountMinor, "amountMinor");
+  if (!input.resellerId || !input.idempotency) throw new Error("Missing funding identity.");
+  const entry: LedgerEntry = {
+    id: randomUUID(),
+    resellerId: input.resellerId,
+    kind: "funding",
+    amountMinor: input.amountMinor,
+    memo: input.memo.slice(0, 240),
+    createdAt: Date.now(),
+    idempotencyKey: input.idempotency
+  };
+  const raw = await redis.eval<string>(FUND_SCRIPT, [
+    walletKey(input.resellerId),
+    ledgerKey(input.resellerId),
+    idempotencyKey("funding:" + input.idempotency)
+  ], [String(input.amountMinor), JSON.stringify(entry)]);
+  const result = parseScriptResult(raw);
+  if (result.ok !== true) throw new Error(String(result.code || "FUNDING_FAILED"));
+  return result.entry as LedgerEntry;
+}
+
+export async function getLedgerEntries(resellerId: string): Promise<LedgerEntry[]> {
+  const values = await redis.hgetall<Record<string, string>>(ledgerKey(resellerId));
+  return Object.values(values || {}).map(value => {
+    try { return typeof value === "string" ? JSON.parse(value) as LedgerEntry : value as unknown as LedgerEntry; }
+    catch { return null; }
+  }).filter((entry): entry is LedgerEntry => Boolean(entry && typeof entry === "object" && "id" in entry))
+    .sort((a, b) => b.createdAt - a.createdAt);
+}
 
 export async function getWallet(resellerId: string): Promise<WalletSnapshot> {
   const values = await redis.hgetall<Record<string, string>>(walletKey(resellerId));
