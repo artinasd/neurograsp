@@ -69,6 +69,19 @@ export default function MasterSubscriptionsPage() {
     finally { setBusy(false); }
   }
 
+  async function remove(subscription: Subscription) {
+    if (!window.confirm("Delete this master subscription and immediately revoke its customer URL?")) return;
+    setBusy(true); setMessage(""); setNewUrl("");
+    try {
+      const response = await fetch("/api/admin/subscriptions/" + encodeURIComponent(subscription.id), { method: "DELETE" });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || "Could not delete master subscription.");
+      setMessage("Master subscription deleted; its secret URL has been revoked.");
+      await refresh();
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Deletion failed."); }
+    finally { setBusy(false); }
+  }
+
   async function copyUrl() {
     try { await navigator.clipboard.writeText(newUrl); setMessage("Master subscription URL copied."); }
     catch { setMessage("Copy was blocked by the browser. Select and copy the URL manually."); }
@@ -85,7 +98,7 @@ export default function MasterSubscriptionsPage() {
     </form>
     {newUrl && <section className="mt-4 rounded-xl border border-brand-200 bg-white p-4"><p className="text-sm font-semibold">New secret URL — save it now</p><div className="mt-2 break-all rounded-lg bg-slate-50 p-3 text-sm">{newUrl}</div><button onClick={() => void copyUrl()} className="mt-3 rounded-lg border px-3 py-2 text-sm font-semibold">Copy URL</button></section>}
     {message && <p role="status" className="mt-4 text-sm text-slate-600">{message}</p>}
-    <section className="mt-8 space-y-3">{subscriptions.map(subscription => <article key={subscription.id} className="rounded-xl border border-slate-200 bg-white p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold">{subscription.username}</h2><p className="mt-1 text-xs text-slate-500">Created {new Date(subscription.createdAt).toLocaleString()}</p><p className="mt-1 text-xs text-slate-500">Secret token is stored as a hash; use rotate to revoke and issue a replacement link.</p></div><div className="flex flex-wrap items-end gap-3"><label className="text-xs font-medium text-slate-600">Active source<select disabled={busy} value={subscription.panelId} onChange={e => void changePanel(subscription, e.target.value)} className="mt-1 block rounded-lg border border-slate-200 px-3 py-2 text-sm">{panels.map(panel => <option key={panel.id} value={panel.id}>{panel.name}</option>)}</select></label><button disabled={busy} onClick={() => void rotate(subscription)} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">Rotate link</button></div></div></article>)}
+    <section className="mt-8 space-y-3">{subscriptions.map(subscription => <article key={subscription.id} className="rounded-xl border border-slate-200 bg-white p-5"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="font-semibold">{subscription.username}</h2><p className="mt-1 text-xs text-slate-500">Created {new Date(subscription.createdAt).toLocaleString()}</p><p className="mt-1 text-xs text-slate-500">Secret token is stored as a hash; use rotate to revoke and issue a replacement link.</p></div><div className="flex flex-wrap items-end gap-3"><label className="text-xs font-medium text-slate-600">Active source<select disabled={busy} value={subscription.panelId} onChange={e => void changePanel(subscription, e.target.value)} className="mt-1 block rounded-lg border border-slate-200 px-3 py-2 text-sm">{panels.map(panel => <option key={panel.id} value={panel.id}>{panel.name}</option>)}</select></label><button disabled={busy} onClick={() => void rotate(subscription)} className="rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50">Rotate link</button><button disabled={busy} onClick={() => void remove(subscription)} className="rounded-lg border border-red-300 px-3 py-2 text-sm font-semibold text-red-800 disabled:opacity-50">Delete link</button></div></div></article>)}
       {!subscriptions.length && <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">No master subscriptions yet.</p>}</section>
   </div></main>;
 }
