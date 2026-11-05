@@ -38,28 +38,42 @@ export async function listMasterSubscriptions(): Promise<MasterSubscriptionSumma
 }
 
 export async function createMasterSubscription(input: { username: string; panelId: string }) {
-  const records = await read();
   const id = randomUUID();
   const token = randomBytes(32).toString("base64url");
   const tokenHash = hashToken(token);
   const now = Date.now();
   const entry: MasterSubscription = { id, username: input.username, panelId: input.panelId, tokenHash, createdAt: now, updatedAt: now };
-  records[id] = entry;
-  await redis.set(LIST_KEY, records);
-  await redis.set(tokenKey(tokenHash), { id, username: entry.username, panelId: entry.panelId });
+  const script = `
+    local raw = redis.call("GET", KEYS[1])
+    local records = raw and cjson.decode(raw) or {}
+    records[ARGV[1]] = cjson.decode(ARGV[2])
+    redis.call("SET", KEYS[1], cjson.encode(records))
+    redis.call("SET", KEYS[2], ARGV[3])
+    return 1
+  `;
+  await redis.eval<number>(script, [LIST_KEY, tokenKey(tokenHash)], [id, JSON.stringify(entry), JSON.stringify({ id, username: entry.username, panelId: entry.panelId })]);
   return { subscription: summary(entry), token };
 }
 
 export async function updateMasterSubscriptionPanel(id: string, panelId: string) {
+  const script = `
+    local raw = redis.call("GET", KEYS[1])
+    if not raw then return 0 end
+    local records = cjson.decode(raw)
+    local entry = records[ARGV[1]]
+    if not entry then return 0 end
+    entry.panelId = ARGV[2]
+    entry.updatedAt = tonumber(ARGV[3])
+    records[ARGV[1]] = entry
+    redis.call("SET", KEYS[1], cjson.encode(records))
+    redis.call("SET", KEYS[2], cjson.encode({id=entry.id, username=entry.username, panelId=entry.panelId}))
+    return 1
+  `;
+  const result = await redis.eval<number>(script, [LIST_KEY, "ng:master-sub-token:v1:"], [id, panelId, String(Date.now())]);
+  if (Number(result) !== 1) return null;
   const records = await read();
-  const existing = records[id];
-  if (!existing) return null;
-  existing.panelId = panelId;
-  existing.updatedAt = Date.now();
-  records[id] = existing;
-  await redis.set(LIST_KEY, records);
-  await redis.set(tokenKey(existing.tokenHash), { id, username: existing.username, panelId });
-  return summary(existing);
+  const updated = records[id];
+  return updated ? summary(updated) : null;
 }
 
 export async function getMasterSubscriptionByToken(token: string): Promise<{ id: string; username: string; panelId: string } | null> {
@@ -75,11 +89,25 @@ export async function rotateMasterSubscriptionToken(id: string) {
   const oldHash = existing.tokenHash;
   const token = randomBytes(32).toString("base64url");
   const tokenHash = hashToken(token);
+  const now = Date.now();
+  const script = `
+    local raw = redis.call("GET", KEYS[1])
+    if not raw then return 0 end
+    local records = cjson.decode(raw)
+    local entry = records[ARGV[1]]
+    if not entry then return 0 end
+    local oldHash = entry.tokenHash
+    entry.tokenHash = ARGV[2]
+    entry.updatedAt = tonumber(ARGV[3])
+    records[ARGV[1]] = entry
+    redis.call("SET", KEYS[1], cjson.encode(records))
+    redis.call("DEL", "ng:master-sub-token:v1:" .. oldHash)
+    redis.call("SET", "ng:master-sub-token:v1:" .. ARGV[2], cjson.encode({id=entry.id, username=entry.username, panelId=entry.panelId}))
+    return 1
+  `;
+  const result = await redis.eval<number>(script, [LIST_KEY], [id, tokenHash, String(now)]);
+  if (Number(result) !== 1) return null;
   existing.tokenHash = tokenHash;
-  existing.updatedAt = Date.now();
-  records[id] = existing;
-  await redis.set(LIST_KEY, records);
-  await redis.del(tokenKey(oldHash));
-  await redis.set(tokenKey(tokenHash), { id, username: existing.username, panelId: existing.panelId });
+  existing.updatedAt = now;
   return { subscription: summary(existing), token };
 }
