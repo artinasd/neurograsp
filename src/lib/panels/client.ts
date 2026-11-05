@@ -1,14 +1,15 @@
-import { api, auth } from "@/lib/panels/pasarguard";
+import { api } from "@/lib/panels/pasarguard";
 
-function isJsonValue(value: unknown): boolean {
-  return value !== null && (typeof value === "object" || typeof value === "string" ||
-    typeof value === "number" || typeof value === "boolean");
+function isUserApiPayload(value: unknown): boolean {
+  if (Array.isArray(value)) return true;
+  if (!value || typeof value !== "object") return false;
+  // The guarded client wraps malformed upstream JSON as { raw: ... }.
+  return !("raw" in value);
 }
 
 export async function testPasarGuardPanel(id: string) {
-  // Use the same SSRF-resistant HTTPS transport as provisioning requests.
-  await auth(id);
+  // api() authenticates and routes through the SSRF-resistant HTTPS transport.
   const users = await api(id, "/api/users?limit=1&offset=0", { method: "GET" });
-  if (!isJsonValue(users)) throw new Error("Panel user API did not return JSON.");
+  if (!isUserApiPayload(users)) throw new Error("Panel user API did not return valid JSON.");
   return { ok: true as const, message: "Authentication and user API check succeeded." };
 }
