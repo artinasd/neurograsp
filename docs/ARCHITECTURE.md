@@ -65,11 +65,12 @@ Redis cannot atomically include an external PasarGuard request. Durability, idem
 
 ## Subscription delivery and switching
 
-- Public route /sub/<username> resolves a master record and fetches the native response from its selected active panel.
-- Preserve raw body and relevant content-type/profile headers; control sensitive headers and caching.
-- Switching is allowed only after the selected panel has a confirmed matching user/subscription.
-- Active-panel selection is an atomic Redis update and does not mutate remote users.
+- Public route /sub/<opaque-token> resolves a token hash to the username and selected upstream panel.
+- Preserve the upstream response body/status and selected subscription/profile headers without format conversion.
+- Do not relay client Authorization, cookies, or HWID/device headers; native delivery is otherwise not rewritten.
+- Switching is allowed only after the exact username and subscription URL are verified on the destination panel. The master token remains stable.
 - If selected source is unavailable, return an explicit service error rather than a successful empty config. Default behavior is no silent fallback.
+- Current implementation supports one selected panel per master token; multi-panel provisioning and customer creation orchestration are separate and not yet complete.
 
 ## Security baseline
 
