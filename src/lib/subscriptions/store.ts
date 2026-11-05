@@ -34,7 +34,9 @@ async function read(): Promise<Record<string, MasterSubscription>> {
 }
 
 function summary(record: MasterSubscription): MasterSubscriptionSummary {
-  const { tokenHash: _hash, tokenCiphertext: _ciphertext, ...safe } = record;
+  const safe = { ...record };
+  delete safe.tokenHash;
+  delete safe.tokenCiphertext;
   return safe;
 }
 
