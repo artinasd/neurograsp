@@ -73,7 +73,15 @@ return result
 
 const RESOLVE_SCRIPT = `
 local prior = redis.call("GET", KEYS[3])
-if prior then return prior end
+if prior then
+  local previous = cjson.decode(prior)
+  local currentRaw = redis.call("GET", KEYS[2])
+  local current = currentRaw and cjson.decode(currentRaw) or nil
+  if not previous.reservation or not current or previous.reservation.id ~= current.id then
+    return cjson.encode({ok=false, code="IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_INPUT"})
+  end
+  return prior
+end
 local raw = redis.call("GET", KEYS[2])
 if not raw then return cjson.encode({ok=false, code="RESERVATION_NOT_FOUND"}) end
 local reservation = cjson.decode(raw)
