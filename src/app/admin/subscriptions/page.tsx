@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 
 type Panel = { id: string; name: string };
@@ -15,7 +15,7 @@ export default function MasterSubscriptionsPage() {
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
-  async function refresh() {
+  const refresh = useCallback(async function refresh() {
     const [panelResponse, subscriptionResponse] = await Promise.all([
       fetch("/api/admin/panels", { cache: "no-store" }),
       fetch("/api/admin/subscriptions", { cache: "no-store" })
@@ -26,8 +26,8 @@ export default function MasterSubscriptionsPage() {
     setPanels(panelList);
     setSubscriptions(subscriptionBody.subscriptions || []);
     if (!panelId && panelList[0]) setPanelId(panelList[0].id);
-  }
-  useEffect(() => { void refresh(); }, []);
+  }, [panelId]);
+  useEffect(() => { void refresh(); }, [refresh]);
 
   async function create(event: React.FormEvent) {
     event.preventDefault(); setBusy(true); setMessage(""); setNewUrl("");
@@ -77,7 +77,7 @@ export default function MasterSubscriptionsPage() {
   return <main className="min-h-screen px-5 py-8 sm:px-10"><div className="mx-auto max-w-5xl">
     <header className="flex items-center justify-between"><Link href="/admin" className="text-sm font-semibold text-brand-700">← Back to owner dashboard</Link><span className="text-xs text-slate-500">Master subscriptions</span></header>
     <h1 className="mt-10 text-3xl font-semibold tracking-tight">Stable customer links</h1>
-    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Create a private URL for a username already provisioned on a PasarGuard panel. The route relays the selected panel's original response body and supported subscription headers without format conversion.</p>
+    <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">Create a private URL for a username already provisioned on a PasarGuard panel. The route relays the selected panel&apos;s original response body and supported subscription headers without format conversion.</p>
     <form onSubmit={create} className="mt-6 grid gap-4 rounded-2xl border border-slate-200 bg-white p-5 sm:grid-cols-2">
       <label className="text-sm font-medium">Exact PasarGuard username<input required minLength={3} maxLength={64} pattern="[A-Za-z0-9_-]+" value={username} onChange={e => setUsername(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 font-normal" placeholder="customer_123" /></label>
       <label className="text-sm font-medium">Initial active panel<select required value={panelId} onChange={e => setPanelId(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 font-normal">{panels.map(panel => <option key={panel.id} value={panel.id}>{panel.name}</option>)}</select></label>
