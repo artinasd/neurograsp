@@ -7,19 +7,19 @@ export function isPrivateIPv4(ip: string): boolean {
   if (p.length !== 4 || p.some(n => !Number.isInteger(n) || n < 0 || n > 255)) return true;
   const [a, b, c] = p;
 
-  return a === 0 ||                         // "This" network
-    a === 10 ||                             // RFC 1918
-    a === 127 ||                            // Loopback
-    (a === 100 && b >= 64 && b <= 127) ||  // Shared address space
-    (a === 169 && b === 254) ||             // Link-local
-    (a === 172 && b >= 16 && b <= 31) ||    // RFC 1918
-    (a === 192 && b === 0 && (c === 0 || c === 2)) || // IETF protocol assignments / documentation
-    (a === 192 && b === 88 && c === 99) ||  // Deprecated 6to4 relay
-    (a === 192 && b === 168) ||             // RFC 1918
-    (a === 198 && (b === 18 || b === 19)) ||// Benchmarking
-    (a === 198 && b === 51 && c === 100) || // Documentation
-    (a === 203 && b === 0 && c === 113) ||  // Documentation
-    a >= 224;                               // Multicast and reserved
+  return a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 0 && (c === 0 || c === 2)) ||
+    (a === 192 && b === 88 && c === 99) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19)) ||
+    (a === 198 && b === 51 && c === 100) ||
+    (a === 203 && b === 0 && c === 113) ||
+    a >= 224;
 }
 
 /**
@@ -45,7 +45,8 @@ export async function validatePanelBaseUrl(input: string): Promise<string> {
   if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
     throw new Error("Panel URL must use HTTPS and cannot include credentials, query parameters, or a fragment.");
   }
-  const hostname = url.hostname.toLowerCase().replace(/^\\[|\\]$/g, "");
+  let hostname = url.hostname.toLowerCase();
+  if (hostname.startsWith("[") && hostname.endsWith("]")) hostname = hostname.slice(1, -1);
   if (!hostname || hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local") ||
       hostname.endsWith(".internal") || hostname.endsWith(".lan")) throw new Error("Private or local panel destinations are not accepted.");
   const ipType = isIP(hostname);
@@ -59,6 +60,6 @@ export async function validatePanelBaseUrl(input: string): Promise<string> {
       throw new Error("Panel hostname resolves to a private or unsupported address.");
     }
   }
-  url.pathname = url.pathname.replace(/\\/$/, "");
+  if (url.pathname.endsWith("/")) url.pathname = url.pathname.slice(0, -1);
   return url.toString();
 }
