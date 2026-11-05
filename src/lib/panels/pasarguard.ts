@@ -152,7 +152,12 @@ export async function fetchNativePasarGuardSubscription(panelId: string, usernam
   const accept = request.headers.get("accept");
   if (userAgent) headers.set("User-Agent", userAgent.slice(0, 512));
   if (accept) headers.set("Accept", accept.slice(0, 512));
-  // Deliberately do not forward cookies, Authorization, or HWID/device headers.
+  // Preserve PasarGuard's optional client identity headers so its native HWID
+  // behavior remains upstream-controlled. Never relay cookies or Authorization.
+  for (const name of ["x-hwid", "x-device-os", "x-ver-os", "x-device-model"]) {
+    const value = request.headers.get(name);
+    if (value) headers.set(name, value.slice(0, 512));
+  }
   let response: Response;
   try { response = await fetchWithTimeout(upstreamUrl, { method: "GET", headers, redirect: "error" }); }
   catch { throw new PanelUncertainError("Native subscription upstream could not be reached."); }
