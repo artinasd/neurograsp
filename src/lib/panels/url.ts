@@ -4,10 +4,15 @@ import { isIP } from "node:net";
 function isPrivateIPv4(ip: string) {
   const p = ip.split(".").map(Number);
   if (p.length !== 4 || p.some(n => !Number.isInteger(n) || n < 0 || n > 255)) return true;
-  return p[0] === 0 || p[0] === 10 || p[0] === 127 || p[0] >= 224 ||
-    (p[0] === 169 && p[1] === 254) || (p[0] === 172 && p[1] >= 16 && p[1] <= 31) ||
-    (p[0] === 192 && p[1] === 168) || (p[0] === 100 && p[1] >= 64 && p[1] <= 127) ||
-    (p[0] === 192 && p[1] === 0) || (p[0] === 198 && (p[1] === 18 || p[1] === 19));
+  const [a, b, c] = p;
+  return a === 0 || a === 10 || a === 127 || a >= 224 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && (b === 0 || b === 2 || b === 168)) ||
+    (a === 192 && b === 88 && c === 99) ||
+    (a === 198 && (b === 18 || b === 19 || b === 51 && c === 100)) ||
+    (a === 203 && b === 0 && c === 113);
 }
 
 export async function validatePanelBaseUrl(input: string): Promise<string> {
