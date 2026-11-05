@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getOwnerSession } from "@/lib/auth/session";
+import { getEnv } from "@/lib/env";
 import { listPanels } from "@/lib/panels/store";
 import { getPasarGuardSubscriptionUrl } from "@/lib/panels/pasarguard";
 import { createMasterSubscription, listMasterSubscriptions } from "@/lib/subscriptions/store";
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     // Verify that the exact account exists and exposes a supported native subscription URL.
     await getPasarGuardSubscriptionUrl(parsed.data.panelId, parsed.data.username);
     const created = await createMasterSubscription(parsed.data);
-    const appUrl = request.nextUrl.origin.replace(/\/$/, "");
+    const appUrl = getEnv().APP_URL.replace(/\/$/, "");
     return NextResponse.json({ subscription: created.subscription, url: appUrl + "/sub/" + created.token }, { status: 201, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not create subscription link." }, { status: 400 });
