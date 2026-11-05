@@ -6,7 +6,7 @@ import { getReservation } from "@/lib/ledger/wallet";
 import { listPanels } from "@/lib/panels/store";
 import { createOperation, getOperationByIdempotency, newOperationId } from "@/lib/provisioning/store";
 import { runProvisioningOperation } from "@/lib/provisioning/runner";
-import { acquireOperationLock, releaseOperationLock } from "@/lib/provisioning/lock";
+import { acquireOperationLock, releaseOperationLock, renewOperationLock } from "@/lib/provisioning/lock";
 import { createMasterSubscription } from "@/lib/subscriptions/store";
 
 export const runtime = "nodejs";
@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
     });
     const lock = await acquireOperationLock(operation.id);
     if (!lock) return NextResponse.json({ error: "This operation is already being processed." }, { status: 409 });
+    const heartbeat = setInterval(() => { void renewOperationLock(operation.id, lock).catch(() => false); }, 45_000);
     try {
       const current = await runProvisioningOperation(operation.id);
       const status = current.state === "completed" ? 200 : current.state === "failed" ? 502 : 202;
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
       }
       return NextResponse.json({ operation: current }, { status, headers: { "Cache-Control": "no-store" } });
     } finally {
+      clearInterval(heartbeat);
       await releaseOperationLock(operation.id, lock);
     }
   } catch (error) {
