@@ -6,6 +6,7 @@ import { listPanels } from "@/lib/panels/store";
 import { createOperation, newOperationId } from "@/lib/provisioning/store";
 import { runProvisioningOperation } from "@/lib/provisioning/runner";
 import { acquireOperationLock, releaseOperationLock } from "@/lib/provisioning/lock";
+import { createMasterSubscription } from "@/lib/subscriptions/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,6 +65,16 @@ export async function POST(request: NextRequest) {
     try {
       const current = await runProvisioningOperation(operation.id);
       const status = current.state === "completed" ? 200 : current.state === "failed" ? 502 : 202;
+      if (current.state === "completed") {
+        const master = await createMasterSubscription({
+          operationId: current.id,
+          username: current.username,
+          panelId: current.panelIds[0],
+          panelIds: current.panelIds
+        });
+        const url = request.nextUrl.origin.replace(/\/$/, "") + "/sub/" + master.token;
+        return NextResponse.json({ operation: current, masterSubscription: master.subscription, url }, { status, headers: { "Cache-Control": "no-store" } });
+      }
       return NextResponse.json({ operation: current }, { status, headers: { "Cache-Control": "no-store" } });
     } finally {
       await releaseOperationLock(operation.id, lock);
