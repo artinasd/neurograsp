@@ -120,7 +120,7 @@ export async function creditFunds(input: { resellerId: string; amountMinor: numb
     createdAt: Date.now(),
     idempotencyKey: input.idempotency
   };
-  const raw = await redis.eval<string>(FUND_SCRIPT, [
+  const raw = await redis.eval(FUND_SCRIPT, [
     walletKey(input.resellerId),
     ledgerKey(input.resellerId),
     idempotencyKey("funding:" + input.idempotency)
@@ -181,7 +181,7 @@ export async function reserveFunds(input: {
     createdAt: now,
     idempotencyKey: input.idempotency
   };
-  const raw = await redis.eval<string>(RESERVE_SCRIPT, [
+  const raw = await redis.eval(RESERVE_SCRIPT, [
     walletKey(input.resellerId),
     ledgerKey(input.resellerId),
     idempotencyKey("reserve:" + input.idempotency),
@@ -207,7 +207,7 @@ async function resolveReservation(reservationId: string, action: "commit" | "rel
     createdAt: now,
     idempotencyKey: idempotency
   };
-  const raw = await redis.eval<string>(RESOLVE_SCRIPT, [
+  const raw = await redis.eval(RESOLVE_SCRIPT, [
     walletKey(rawReservation.resellerId),
     reservationKey(reservationId),
     idempotencyKey(action + ":" + idempotency),
