@@ -3,11 +3,13 @@
 ## Owner workflow
 
 - Visit `/admin/subscriptions`.
-- Create a link for an exact PasarGuard username and choose a connected panel.
-- The API verifies that the exact user exists and exposes a supported native subscription URL.
-- The public route is `/sub/<opaque-token>`; only the SHA-256 token hash is retained in the master-subscription record.
-- The URL is returned only when created or rotated. Rotating revokes the old token.
-- The owner can switch the active source only after the exact username and subscription URL are verified on the destination panel.
+- Provision a customer from `/admin/provision/new`, using an existing wallet reservation and selecting the panels to attach.
+- The provisioning runner creates/verifies the exact same username, quota, expiration, and status on every selected PasarGuard panel.
+- Once all panels are confirmed, the system creates a master subscription record keyed to the operation idempotently and returns the stable URL.
+- The master record tracks its attached panel IDs and one active panel. Switching is permitted only among attached panels after the exact user and native subscription URL are verified.
+- A master link can also be created for an already-existing exact user from `/admin/subscriptions`.
+- The public route is `/sub/<opaque-token>`. The token hash is used for lookup; an encrypted token is retained server-side to support safe retries of a completed operation. The plaintext is never returned in subscription list responses.
+- The URL is returned on successful provisioning or reconciliation. Rotating revokes the previous token.
 
 ## Native delivery behavior
 
