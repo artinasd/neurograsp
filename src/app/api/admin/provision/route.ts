@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getOwnerSession } from "@/lib/auth/session";
 import { getReservation } from "@/lib/ledger/wallet";
 import { listPanels } from "@/lib/panels/store";
-import { createOperation, newOperationId } from "@/lib/provisioning/store";
+import { createOperation, getOperationByIdempotency, newOperationId } from "@/lib/provisioning/store";
 import { runProvisioningOperation } from "@/lib/provisioning/runner";
 import { acquireOperationLock, releaseOperationLock } from "@/lib/provisioning/lock";
 import { createMasterSubscription } from "@/lib/subscriptions/store";
@@ -35,9 +35,29 @@ export async function POST(request: NextRequest) {
   const panelIds = [...new Set(input.panelIds)];
   if (panelIds.length !== input.panelIds.length) return NextResponse.json({ error: "Panel IDs must be unique." }, { status: 400 });
 
-  const reservation = await getReservation(input.reservationId);
-  if (!reservation || reservation.state !== "reserved") {
-    return NextResponse.json({ error: "A valid reserved wallet amount is required before provisioning." }, { status: 409 });
+  const snapshot = {
+    username: input.username,
+    dataLimitBytes: bytes,
+    expireAt: input.expireAt,
+    status: "active" as const,
+    note: input.note,
+    groupIds: [] as number[]
+  };
+  const existingOperation = await getOperationByIdempotency(input.idempotencyKey);
+  if (existingOperation && (
+    existingOperation.username !== input.username ||
+    existingOperation.reservationId !== input.reservationId ||
+    existingOperation.panelIds.join("|") !== panelIds.join("|") ||
+    JSON.stringify(existingOperation.snapshot) !== JSON.stringify(snapshot)
+  )) {
+    return NextResponse.json({ error: "IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_INPUT" }, { status: 409 });
+  }
+
+  if (!existingOperation) {
+    const reservation = await getReservation(input.reservationId);
+    if (!reservation || reservation.state !== "reserved") {
+      return NextResponse.json({ error: "A valid reserved wallet amount is required before provisioning." }, { status: 409 });
+    }
   }
   const connected = await listPanels();
   if (panelIds.some(id => !connected.some(panel => panel.id === id))) {
@@ -46,19 +66,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const operation = await createOperation({
-      id: newOperationId(),
+      id: existingOperation?.id ?? newOperationId(),
       idempotencyKey: input.idempotencyKey,
       reservationId: input.reservationId,
       username: input.username,
       panelIds,
-      snapshot: {
-        username: input.username,
-        dataLimitBytes: bytes,
-        expireAt: input.expireAt,
-        status: "active",
-        note: input.note,
-        groupIds: []
-      }
+      snapshot
     });
     const lock = await acquireOperationLock(operation.id);
     if (!lock) return NextResponse.json({ error: "This operation is already being processed." }, { status: 409 });
