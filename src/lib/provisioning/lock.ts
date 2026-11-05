@@ -10,6 +10,17 @@ export async function acquireOperationLock(operationId: string) {
   return result === "OK" ? token : null;
 }
 
+export async function renewOperationLock(operationId: string, token: string) {
+  const script = `
+    if redis.call("GET", KEYS[1]) == ARGV[1] then
+      return redis.call("EXPIRE", KEYS[1], ARGV[2])
+    end
+    return 0
+  `;
+  const result = await redis.eval<number>(script, [lockKey(operationId)], [token, String(LOCK_TTL_SECONDS)]);
+  return Number(result) === 1;
+}
+
 export async function releaseOperationLock(operationId: string, token: string) {
   const script = `
     if redis.call("GET", KEYS[1]) == ARGV[1] then
