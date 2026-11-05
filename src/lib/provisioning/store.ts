@@ -38,6 +38,11 @@ export async function getOperation(id: string): Promise<ProvisioningOperation | 
   return await redis.get<ProvisioningOperation>(operationKey(id)) ?? null;
 }
 
+export async function getOperationByIdempotency(value: string): Promise<ProvisioningOperation | null> {
+  const operation = await redis.get<ProvisioningOperation>(idempotencyKey(value));
+  return operation ?? null;
+}
+
 export async function updatePanelResult(operationId: string, result: PanelOperationResult, state: ProvisioningOperation["state"]) {
   const script = `
     local raw = redis.call("GET", KEYS[1])
