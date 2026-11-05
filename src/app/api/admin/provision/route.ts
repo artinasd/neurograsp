@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getOwnerSession } from "@/lib/auth/session";
+import { getEnv } from "@/lib/env";
 import { getReservation } from "@/lib/ledger/wallet";
 import { listPanels } from "@/lib/panels/store";
 import { createOperation, getOperationByIdempotency, newOperationId } from "@/lib/provisioning/store";
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
           panelId: current.panelIds[0],
           panelIds: current.panelIds
         });
-        const url = request.nextUrl.origin.replace(/\/$/, "") + "/sub/" + master.token;
+        const url = getEnv().APP_URL.replace(/\/$/, "") + "/sub/" + master.token;
         return NextResponse.json({ operation: current, masterSubscription: master.subscription, url }, { status, headers: { "Cache-Control": "no-store" } });
       }
       return NextResponse.json({ operation: current }, { status, headers: { "Cache-Control": "no-store" } });
