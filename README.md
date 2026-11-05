@@ -11,8 +11,9 @@ Financial operations use a reserved-balance workflow and durable reconciliation 
 ## Current status
 
 - Architecture baseline: documented in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-- Application foundation: in progress.
-- No production credentials or live panel integrations are included yet.
+- Application foundation: owner setup, login/session, and Redis wallet reservation primitives.
+- Panel connections: owner-only CRUD, AES-256-GCM credential storage, HTTPS/public-destination validation, and non-mutating PasarGuard authentication/API testing.
+- Panel connection testing is a compatibility check only; provisioning, pricing/funding, operation reconciliation, and master subscription delivery are not implemented yet.
 
 ## Local setup
 
