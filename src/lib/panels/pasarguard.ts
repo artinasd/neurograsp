@@ -4,6 +4,7 @@ import { getPanelCredentials } from "@/lib/panels/store";
 import { validatePanelBaseUrl } from "@/lib/panels/url";
 
 const REQUEST_TIMEOUT_MS = 10000;
+const MAX_UPSTREAM_RESPONSE_BYTES = 10 * 1024 * 1024;
 type JsonRecord = Record<string, unknown>;
 
 function record(value: unknown): JsonRecord | null {
@@ -39,7 +40,18 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Re
         signal: controller.signal
       }, response => {
         const chunks: Buffer[] = [];
-        response.on("data", chunk => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+        let receivedBytes = 0;
+        response.on("data", chunk => {
+          const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+          receivedBytes += bytes.length;
+          if (receivedBytes > MAX_UPSTREAM_RESPONSE_BYTES) {
+            const error = new Error("PasarGuard response exceeded the 10 MiB safety limit.");
+            response.destroy(error);
+            reject(error);
+            return;
+          }
+          chunks.push(bytes);
+        });
         response.on("error", reject);
         response.on("end", () => {
           const responseHeaders = new Headers();
