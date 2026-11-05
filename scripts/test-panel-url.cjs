@@ -19,10 +19,16 @@ test("rejects IPv4 non-global and special-purpose ranges", () => {
   for (const ip of [
     "0.0.0.1", "10.1.2.3", "100.64.0.1", "100.127.255.254",
     "127.0.0.1", "169.254.1.1", "172.16.0.1", "172.31.255.254",
-    "192.0.0.9", "192.2.0.1", "192.88.99.1", "192.168.1.1",
+    "192.0.0.9", "192.0.2.1", "192.88.99.1", "192.168.1.1",
     "198.18.0.1", "198.19.255.254", "198.51.100.1",
     "203.0.113.1", "224.0.0.1", "240.0.0.1",
   ]) assert.equal(isPrivateIPv4(ip), true, `${ip} should be rejected`);
+});
+
+test("does not overreject unrelated 192.0/16 and 192.2/16 addresses", () => {
+  for (const ip of ["192.0.1.1", "192.2.0.1", "192.2.255.254"]) {
+    assert.equal(isPrivateIPv4(ip), false, `${ip} should remain eligible`);
+  }
 });
 
 test("rejects malformed IPv4 input", () => {
