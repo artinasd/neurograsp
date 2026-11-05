@@ -1,7 +1,6 @@
 import { request as httpsRequest } from "node:https";
-import { publicIPv4Lookup } from "@/lib/panels/url";
+import { publicIPv4Lookup, validatePanelBaseUrl } from "@/lib/panels/url";
 import { getPanelCredentials } from "@/lib/panels/store";
-import { validatePanelBaseUrl } from "@/lib/panels/url";
 
 const REQUEST_TIMEOUT_MS = 10000;
 const MAX_UPSTREAM_RESPONSE_BYTES = 10 * 1024 * 1024;
@@ -209,7 +208,7 @@ export async function fetchNativePasarGuardSubscription(panelId: string, usernam
   try { response = await fetchWithTimeout(upstreamUrl, { method: "GET", headers, redirect: "error" }); }
   catch { throw new PanelUncertainError("Native subscription upstream could not be reached."); }
   const outgoing = new Headers();
-  for (const name of ["content-type", "subscription-userinfo", "profile-title", "profile-update-interval", "support-url", "announce", "content-disposition", "profile-web-page-url"]) {
+  for (const name of ["content-type", "content-encoding", "content-length", "subscription-userinfo", "profile-title", "profile-update-interval", "support-url", "announce", "content-disposition", "profile-web-page-url"]) {
     const value = response.headers.get(name);
     if (value) outgoing.set(name, value);
   }
