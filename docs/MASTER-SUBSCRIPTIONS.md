@@ -19,7 +19,7 @@ The subscription URL must be HTTPS and share the configured panel origin; redire
 
 ## Current limitations and checks
 
-- Each master URL has one selected upstream at a time. The UI verifies a user on the chosen panel, but does not yet coordinate creation on all attached panels.
+- Each master URL has one selected upstream at a time. Provisioning coordinates creation and read-back verification across the selected attached panels; it does not yet provide an owner-facing wallet reservation/funding flow.
 - The public handler currently does not aggregate usage metadata across panels; it relays selected upstream subscription headers.
 - No rate-limit or abuse-control layer has been added to the public route yet.
 - No build, lint, typecheck, or live PasarGuard verification has been run in this environment.
