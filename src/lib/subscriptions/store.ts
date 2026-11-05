@@ -155,3 +155,19 @@ export async function rotateMasterSubscriptionToken(id: string) {
   const updated = (await read())[id];
   return updated ? { subscription: summary(updated), token } : null;
 }
+
+export async function deleteMasterSubscription(id: string) {
+  const script = `
+    local raw = redis.call("GET", KEYS[1])
+    if not raw then return 0 end
+    local records = cjson.decode(raw)
+    local entry = records[ARGV[1]]
+    if not entry then return 0 end
+    records[ARGV[1]] = nil
+    redis.call("SET", KEYS[1], cjson.encode(records))
+    redis.call("DEL", "ng:master-sub-token:v1:" .. entry.tokenHash)
+    if entry.operationId then redis.call("DEL", "ng:master-sub-operation:v1:" .. entry.operationId) end
+    return 1
+  `;
+  return Number(await redis.eval(script, [LIST_KEY], [id])) === 1;
+}
