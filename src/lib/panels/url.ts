@@ -1,20 +1,27 @@
 import { lookup } from "node:dns/promises";
 import { isIP, type LookupFunction } from "node:net";
 
-function isPrivateIPv4(ip: string) {
+/** Reject non-global IPv4 ranges before a panel URL can be used. */
+export function isPrivateIPv4(ip: string): boolean {
   const p = ip.split(".").map(Number);
   if (p.length !== 4 || p.some(n => !Number.isInteger(n) || n < 0 || n > 255)) return true;
   const [a, b, c] = p;
-  return a === 0 || a === 10 || a === 127 || a >= 224 ||
-    (a === 100 && b >= 64 && b <= 127) ||
-    (a === 169 && b === 254) ||
-    (a === 172 && b >= 16 && b <= 31) ||
-    (a === 192 && (b === 0 || b === 2 || b === 168)) ||
-    (a === 192 && b === 88 && c === 99) ||
-    (a === 198 && (b === 18 || b === 19 || b === 51 && c === 100)) ||
-    (a === 203 && b === 0 && c === 113);
-}
 
+  return a === 0 ||                         // "This" network
+    a === 10 ||                             // RFC 1918
+    a === 127 ||                            // Loopback
+    (a === 100 && b >= 64 && b <= 127) ||  // Shared address space
+    (a === 169 && b === 254) ||             // Link-local
+    (a === 172 && b >= 16 && b <= 31) ||    // RFC 1918
+    (a === 192 && b === 0) ||               // IETF protocol assignments
+    (a === 192 && b === 2) ||               // Documentation
+    (a === 192 && b === 88 && c === 99) ||  // Deprecated 6to4 relay
+    (a === 192 && b === 168) ||             // RFC 1918
+    (a === 198 && (b === 18 || b === 19)) ||// Benchmarking
+    (a === 198 && b === 51 && c === 100) || // Documentation
+    (a === 203 && b === 0 && c === 113) ||  // Documentation
+    a >= 224;                               // Multicast and reserved
+}
 
 /**
  * Resolve only vetted public IPv4 addresses at connection time. The request
@@ -32,6 +39,7 @@ export const publicIPv4Lookup: LookupFunction = ((hostname: string, options: unk
     else callback(null, safe[0].address, safe[0].family);
   }).catch(() => callback(Object.assign(new Error("Panel hostname could not be resolved."), { code: "ENOTFOUND" })));
 }) as unknown as LookupFunction;
+
 export async function validatePanelBaseUrl(input: string): Promise<string> {
   let url: URL;
   try { url = new URL(input.trim()); } catch { throw new Error("Enter a valid panel URL."); }
