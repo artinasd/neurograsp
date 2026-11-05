@@ -66,10 +66,10 @@ export async function updateMasterSubscriptionPanel(id: string, panelId: string)
     entry.updatedAt = tonumber(ARGV[3])
     records[ARGV[1]] = entry
     redis.call("SET", KEYS[1], cjson.encode(records))
-    redis.call("SET", KEYS[2], cjson.encode({id=entry.id, username=entry.username, panelId=entry.panelId}))
+    redis.call("SET", "ng:master-sub-token:v1:" .. entry.tokenHash, cjson.encode({id=entry.id, username=entry.username, panelId=entry.panelId}))
     return 1
   `;
-  const result = await redis.eval<number>(script, [LIST_KEY, "ng:master-sub-token:v1:"], [id, panelId, String(Date.now())]);
+  const result = await redis.eval<number>(script, [LIST_KEY], [id, panelId, String(Date.now())]);
   if (Number(result) !== 1) return null;
   const records = await read();
   const updated = records[id];
