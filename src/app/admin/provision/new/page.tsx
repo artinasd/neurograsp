@@ -25,6 +25,8 @@ export default function NewProvisioningPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    const fromWallet = new URLSearchParams(window.location.search).get("reservationId");
+    if (fromWallet) setReservationId(fromWallet);
     fetch("/api/admin/panels", { cache: "no-store" }).then(async response => {
       if (response.status === 401) { window.location.href = "/login"; return; }
       const body = await response.json();
