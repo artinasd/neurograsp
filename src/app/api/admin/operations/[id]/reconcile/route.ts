@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getOwnerSession } from "@/lib/auth/session";
 import { getEnv } from "@/lib/env";
 import { getOperation } from "@/lib/provisioning/store";
-import { acquireOperationLock, releaseOperationLock } from "@/lib/provisioning/lock";
+import { acquireOperationLock, releaseOperationLock, renewOperationLock } from "@/lib/provisioning/lock";
 import { runProvisioningOperation } from "@/lib/provisioning/runner";
 import { createMasterSubscription } from "@/lib/subscriptions/store";
 
@@ -37,6 +37,7 @@ export async function POST(request: NextRequest, context: { params: { id: string
   const token = await acquireOperationLock(context.params.id);
   if (!token) return NextResponse.json({ error: "This operation is already being processed." }, { status: 409 });
 
+  const heartbeat = setInterval(() => { void renewOperationLock(context.params.id, token).catch(() => false); }, 45_000);
   try {
     const operation = await runProvisioningOperation(context.params.id);
     if (operation.state === "completed") {
@@ -53,6 +54,7 @@ export async function POST(request: NextRequest, context: { params: { id: string
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Reconciliation failed." }, { status: 502 });
   } finally {
+    clearInterval(heartbeat);
     await releaseOperationLock(context.params.id, token);
   }
 }
