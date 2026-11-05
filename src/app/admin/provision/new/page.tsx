@@ -22,6 +22,7 @@ export default function NewProvisioningPage() {
   const [operation, setOperation] = useState<Operation | null>(null);
   const [url, setUrl] = useState("");
   const [message, setMessage] = useState("");
+  const [orderKey, setOrderKey] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -41,13 +42,15 @@ export default function NewProvisioningPage() {
 
   function toggle(id: string, checked: boolean) {
     setSelected(current => checked ? [...current, id] : current.filter(item => item !== id));
+    setOrderKey("");
   }
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!valid) return;
     setBusy(true); setMessage(""); setUrl(""); setOperation(null);
-    const idempotencyKey = "ng-order-" + crypto.randomUUID();
+    const idempotencyKey = orderKey || "ng-order-" + crypto.randomUUID();
+    setOrderKey(idempotencyKey);
     try {
       const response = await fetch("/api/admin/provision", {
         method: "POST",
@@ -67,6 +70,7 @@ export default function NewProvisioningPage() {
       if (body.url) setUrl(body.url);
       if (!response.ok && response.status !== 202) throw new Error(body.error || "Provisioning did not complete.");
       setMessage(response.status === 200 ? "Provisioning verified on all selected panels. The stable master URL is ready." : "Operation was accepted but is not fully confirmed yet. Review and reconcile the operation before sharing a link.");
+      if (response.status === 200) setOrderKey("");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Provisioning request failed."); }
     finally { setBusy(false); }
   }
@@ -81,12 +85,12 @@ export default function NewProvisioningPage() {
     <h1 className="mt-10 text-3xl font-semibold tracking-tight">Provision customer</h1>
     <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">This creates and verifies the same account on each selected PasarGuard panel. On complete success, Neurograsp issues one stable subscription URL. A wallet reservation must already exist.</p>
     <form onSubmit={submit} className="mt-6 space-y-5 rounded-2xl border border-slate-200 bg-white p-5">
-      <label className="block text-sm font-medium">Wallet reservation ID<input required value={reservationId} onChange={e => setReservationId(e.target.value)} placeholder="UUID of an existing reserved amount" className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 font-normal" /></label>
+      <label className="block text-sm font-medium">Wallet reservation ID<input required value={reservationId} onChange={e => { setReservationId(e.target.value); setOrderKey(""); }} placeholder="UUID of an existing reserved amount" className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 font-normal" /></label>
       <div className="grid gap-4 sm:grid-cols-2">
-        <label className="block text-sm font-medium">Username<input required minLength={3} maxLength={64} pattern="[A-Za-z0-9_-]+" value={username} onChange={e => setUsername(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 font-normal" /></label>
-        <label className="block text-sm font-medium">Quota (decimal GB)<input required type="number" min="0.000000001" max="10000" step="any" value={quotaGb} onChange={e => setQuotaGb(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 font-normal" /></label>
-        <label className="block text-sm font-medium">Expires at<input required type="datetime-local" value={expireAt} onChange={e => setExpireAt(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 font-normal" /></label>
-        <label className="block text-sm font-medium">Remote note<input maxLength={240} value={note} onChange={e => setNote(e.target.value)} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 font-normal" /></label>
+        <label className="block text-sm font-medium">Username<input required minLength={3} maxLength={64} pattern="[A-Za-z0-9_-]+" value={username} onChange={e => { setUsername(e.target.value); setOrderKey(""); }} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 font-normal" /></label>
+        <label className="block text-sm font-medium">Quota (decimal GB)<input required type="number" min="0.000000001" max="10000" step="any" value={quotaGb} onChange={e => { setQuotaGb(e.target.value); setOrderKey(""); }} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 font-normal" /></label>
+        <label className="block text-sm font-medium">Expires at<input required type="datetime-local" value={expireAt} onChange={e => { setExpireAt(e.target.value); setOrderKey(""); }} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 font-normal" /></label>
+        <label className="block text-sm font-medium">Remote note<input maxLength={240} value={note} onChange={e => { setNote(e.target.value); setOrderKey(""); }} className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2.5 font-normal" /></label>
       </div>
       <fieldset className="space-y-2"><legend className="text-sm font-semibold">Attach PasarGuard panels</legend>{panels.map(panel => <label key={panel.id} className="flex items-center gap-3 rounded-lg border border-slate-200 p-3 text-sm"><input type="checkbox" checked={selected.includes(panel.id)} onChange={e => toggle(panel.id, e.target.checked)} />{panel.name}<span className="ml-auto text-xs text-slate-500">{panel.id}</span></label>)}{!panels.length && <p className="text-sm text-amber-700">No panel connections found. Add and test a panel first.</p>}</fieldset>
       <button disabled={busy || !valid || !panels.length} className="w-full rounded-lg bg-ink px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Provisioning…" : "Provision & issue master link"}</button>
