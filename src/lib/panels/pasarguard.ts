@@ -122,3 +122,47 @@ export async function updatePasarGuardUserById(panelId: string, remoteId: string
 export async function deletePasarGuardUserById(panelId: string, remoteId: string | number) {
   return api(panelId, "/api/user/by-id/" + encodeURIComponent(String(remoteId)), { method: "DELETE" });
 }
+
+export async function getPasarGuardSubscriptionUrl(panelId: string, username: string): Promise<string> {
+  const user = await findExactPasarGuardUser(panelId, username);
+  if (!user) throw new Error("Exact username was not found on the selected PasarGuard panel.");
+  const candidate = typeof user.subscription_url === "string" ? user.subscription_url
+    : typeof user.subscriptionUrl === "string" ? user.subscriptionUrl
+    : typeof record(user.links)?.subscription === "string" ? String(record(user.links)!.subscription)
+    : typeof user.subscription_link === "string" ? user.subscription_link
+    : "";
+  if (!candidate) throw new Error("PasarGuard user response does not expose a subscription URL.");
+  const panel = await getPanelCredentials(panelId);
+  if (!panel) throw new Error("Panel connection not found.");
+  const baseUrl = await validatePanelBaseUrl(panel.baseUrl);
+  let upstream: URL;
+  try { upstream = new URL(candidate, baseUrl + "/"); }
+  catch { throw new Error("PasarGuard returned an invalid subscription URL."); }
+  if (upstream.protocol !== "https:" || upstream.origin !== new URL(baseUrl).origin ||
+      upstream.username || upstream.password || upstream.hash) {
+    throw new Error("Subscription URL must use HTTPS on the configured panel origin.");
+  }
+  return upstream.toString();
+}
+
+export async function fetchNativePasarGuardSubscription(panelId: string, username: string, request: Request): Promise<Response> {
+  const upstreamUrl = await getPasarGuardSubscriptionUrl(panelId, username);
+  const headers = new Headers();
+  const userAgent = request.headers.get("user-agent");
+  const accept = request.headers.get("accept");
+  if (userAgent) headers.set("User-Agent", userAgent.slice(0, 512));
+  if (accept) headers.set("Accept", accept.slice(0, 512));
+  // Deliberately do not forward cookies, Authorization, or HWID/device headers.
+  let response: Response;
+  try { response = await fetchWithTimeout(upstreamUrl, { method: "GET", headers, redirect: "error" }); }
+  catch { throw new PanelUncertainError("Native subscription upstream could not be reached."); }
+  const outgoing = new Headers();
+  for (const name of ["content-type", "subscription-userinfo", "profile-title", "profile-update-interval", "support-url", "announce", "content-disposition", "profile-web-page-url"]) {
+    const value = response.headers.get(name);
+    if (value) outgoing.set(name, value);
+  }
+  outgoing.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+  outgoing.set("Pragma", "no-cache");
+  outgoing.set("X-Content-Type-Options", "nosniff");
+  return new Response(response.body, { status: response.status, headers: outgoing });
+}
