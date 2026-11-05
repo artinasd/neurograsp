@@ -169,5 +169,7 @@ export async function fetchNativePasarGuardSubscription(panelId: string, usernam
   outgoing.set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
   outgoing.set("Pragma", "no-cache");
   outgoing.set("X-Content-Type-Options", "nosniff");
+  outgoing.set("Referrer-Policy", "no-referrer");
+  outgoing.set("X-Robots-Tag", "noindex, nofollow, noarchive");
   return new Response(response.body, { status: response.status, headers: outgoing });
 }
