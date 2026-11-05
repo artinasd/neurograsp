@@ -34,10 +34,15 @@ async function read(): Promise<Record<string, MasterSubscription>> {
 }
 
 function summary(record: MasterSubscription): MasterSubscriptionSummary {
-  const safe = { ...record };
-  delete safe.tokenHash;
-  delete safe.tokenCiphertext;
-  return safe;
+  return {
+    id: record.id,
+    username: record.username,
+    panelId: record.panelId,
+    panelIds: record.panelIds,
+    operationId: record.operationId,
+    createdAt: record.createdAt,
+    updatedAt: record.updatedAt
+  };
 }
 
 function secretUrlToken(record: MasterSubscription) {
