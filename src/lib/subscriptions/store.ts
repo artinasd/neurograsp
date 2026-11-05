@@ -166,7 +166,6 @@ export async function deleteMasterSubscription(id: string) {
     records[ARGV[1]] = nil
     redis.call("SET", KEYS[1], cjson.encode(records))
     redis.call("DEL", "ng:master-sub-token:v1:" .. entry.tokenHash)
-    if entry.operationId then redis.call("DEL", "ng:master-sub-operation:v1:" .. entry.operationId) end
     return 1
   `;
   return Number(await redis.eval(script, [LIST_KEY], [id])) === 1;
