@@ -1,14 +1,20 @@
-import { NextResponse } from "next/server";
-import { destroyOwnerSession } from "@/lib/auth/session";
+import { NextRequest, NextResponse } from "next/server";
+import { destroyOwnerSession, SESSION_COOKIE } from "@/lib/auth/session";
 
 export const runtime = "nodejs";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     await destroyOwnerSession();
-    return NextResponse.json({ success: true }, {
-      headers: { "Cache-Control": "no-store" }
+    const response = NextResponse.redirect(new URL("/login", request.url), 303);
+    response.cookies.set(SESSION_COOKIE, "", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      path: "/",
+      maxAge: 0
     });
+    return response;
   } catch {
     return NextResponse.json({ error: "Could not end the session." }, { status: 503 });
   }
