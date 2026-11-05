@@ -69,7 +69,7 @@ export async function createMasterSubscription(input: { username: string; panelI
       redis.call("SET", KEYS[2], ARGV[1])
       return ARGV[1]
     `;
-    const result = await redis.eval<string>(script, [LIST_KEY, operationKey(input.operationId), tokenKey(tokenHash)], [id, JSON.stringify(entry), JSON.stringify({ id, username: entry.username, panelId: entry.panelId })]);
+    const result = await redis.eval(script, [LIST_KEY, operationKey(input.operationId), tokenKey(tokenHash)], [id, JSON.stringify(entry), JSON.stringify({ id, username: entry.username, panelId: entry.panelId })]);
     const actualId = String(result || "");
     const records = await read();
     const actual = records[actualId];
@@ -90,7 +90,7 @@ export async function createMasterSubscription(input: { username: string; panelI
     redis.call("SET", KEYS[2], ARGV[3])
     return 1
   `;
-  await redis.eval<number>(script, [LIST_KEY, tokenKey(tokenHash)], [id, JSON.stringify(entry), JSON.stringify({ id, username: entry.username, panelId: entry.panelId })]);
+  await redis.eval(script, [LIST_KEY, tokenKey(tokenHash)], [id, JSON.stringify(entry), JSON.stringify({ id, username: entry.username, panelId: entry.panelId })]);
   return { subscription: summary(entry), token };
 }
 
@@ -113,7 +113,7 @@ export async function updateMasterSubscriptionPanel(id: string, panelId: string)
     redis.call("SET", "ng:master-sub-token:v1:" .. entry.tokenHash, cjson.encode({id=entry.id, username=entry.username, panelId=entry.panelId}))
     return 1
   `;
-  const result = await redis.eval<number>(script, [LIST_KEY], [id, panelId, String(Date.now())]);
+  const result = await redis.eval(script, [LIST_KEY], [id, panelId, String(Date.now())]);
   if (Number(result) !== 1) {
     if (Number(result) === -1) throw new Error("The selected panel is not attached to this master subscription.");
     return null;
@@ -148,7 +148,7 @@ export async function rotateMasterSubscriptionToken(id: string) {
     redis.call("SET", "ng:master-sub-token:v1:" .. ARGV[2], cjson.encode({id=entry.id, username=entry.username, panelId=entry.panelId}))
     return 1
   `;
-  const result = await redis.eval<number>(script, [LIST_KEY], [id, tokenHash, tokenCiphertext, String(now)]);
+  const result = await redis.eval(script, [LIST_KEY], [id, tokenHash, tokenCiphertext, String(now)]);
   if (Number(result) !== 1) return null;
   const updated = (await read())[id];
   return updated ? { subscription: summary(updated), token } : null;
