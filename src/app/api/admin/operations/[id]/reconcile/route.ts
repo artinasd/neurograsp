@@ -3,6 +3,7 @@ import { getOwnerSession } from "@/lib/auth/session";
 import { getOperation } from "@/lib/provisioning/store";
 import { acquireOperationLock, releaseOperationLock } from "@/lib/provisioning/lock";
 import { runProvisioningOperation } from "@/lib/provisioning/runner";
+import { createMasterSubscription } from "@/lib/subscriptions/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +24,17 @@ export async function POST(request: NextRequest, context: { params: { id: string
 
   try {
     const operation = await runProvisioningOperation(context.params.id);
-    return NextResponse.json({ operation }, { status: operation.state === "completed" ? 200 : 202, headers: { "Cache-Control": "no-store" } });
+    if (operation.state === "completed") {
+      const master = await createMasterSubscription({
+        operationId: operation.id,
+        username: operation.username,
+        panelId: operation.panelIds[0],
+        panelIds: operation.panelIds
+      });
+      const url = request.nextUrl.origin.replace(/\/$/, "") + "/sub/" + master.token;
+      return NextResponse.json({ operation, masterSubscription: master.subscription, url }, { status: 200, headers: { "Cache-Control": "no-store" } });
+    }
+    return NextResponse.json({ operation }, { status: 202, headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Reconciliation failed." }, { status: 502 });
   } finally {
