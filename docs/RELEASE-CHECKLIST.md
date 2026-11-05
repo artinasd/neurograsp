@@ -42,4 +42,5 @@ Do not connect live customer orders until these checks pass against a non-produc
 - [ ] Run `npm install`, `npm run typecheck`, `npm run lint`, and `npm run build` from the repository.
 - [ ] Review deployment logs for secret/token leakage.
 - [ ] Add public-route rate limiting/abuse monitoring before broad customer rollout.
-- [ ] Validate SSRF protections and any separate subscription hostname requirements against real deployment topology.
+- [ ] Validate SSRF protections against the deployed network topology, including DNS changes/rebinding and public-to-private resolution changes; current validation rejects known non-public IPv4 ranges and IPv6 destinations, but hostname resolution is not pinned to the validated IP for the outbound connection.
+- [ ] Confirm the panel's DNS answers remain public between configuration validation and every upstream request; for a stronger SSRF guarantee, use a custom HTTP dispatcher/agent that pins the validated public address while preserving TLS hostname verification.
