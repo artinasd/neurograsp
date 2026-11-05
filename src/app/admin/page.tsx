@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { Layers3, ShieldCheck, Wallet, Activity, ArrowUpRight } from "lucide-react";
 import { getOwnerSession } from "@/lib/auth/session";
 
@@ -39,7 +40,7 @@ export default async function AdminPage() {
               </div>
               <h2 className="mt-5 text-base font-semibold">{title}</h2>
               <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
-              <div className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-slate-400">Not available yet <ArrowUpRight size={14} /></div>
+              {title === "PasarGuard panels" ? <Link href="/admin/panels" className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-brand-700">Manage panel connections <ArrowUpRight size={14} /></Link> : <div className="mt-5 inline-flex items-center gap-1 text-xs font-semibold text-slate-400">Not available yet <ArrowUpRight size={14} /></div>}
             </article>
           ))}
         </div>
