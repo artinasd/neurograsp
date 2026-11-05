@@ -30,7 +30,7 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Re
     headers.forEach((value, key) => { requestHeaders[key] = value; });
     const body = init.body instanceof URLSearchParams ? init.body.toString() :
       typeof init.body === "string" ? init.body :
-      init.body instanceof Uint8Array ? Buffer.from(init.body) : undefined;
+      init.body instanceof Uint8Array ? new Uint8Array(init.body) : undefined;
     const responseBytes = await new Promise<{ status: number; headers: Headers; body: Buffer }>((resolve, reject) => {
       const req = httpsRequest(target, {
         method: init.method || "GET",
