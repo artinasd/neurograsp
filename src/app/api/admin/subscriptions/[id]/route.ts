@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getOwnerSession } from "@/lib/auth/session";
 import { listPanels } from "@/lib/panels/store";
 import { getPasarGuardSubscriptionUrl } from "@/lib/panels/pasarguard";
-import { listMasterSubscriptions, updateMasterSubscriptionPanel } from "@/lib/subscriptions/store";
+import { deleteMasterSubscription, listMasterSubscriptions, updateMasterSubscriptionPanel } from "@/lib/subscriptions/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,4 +32,13 @@ export async function PATCH(request: NextRequest, context: { params: { id: strin
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Could not switch selected panel." }, { status: 400 });
   }
+}
+
+export async function DELETE(request: NextRequest, context: { params: { id: string } }) {
+  if (!await getOwnerSession()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const origin = request.headers.get("origin");
+  if (origin && origin !== request.nextUrl.origin) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+  const deleted = await deleteMasterSubscription(context.params.id);
+  if (!deleted) return NextResponse.json({ error: "Master subscription not found." }, { status: 404 });
+  return NextResponse.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
 }
