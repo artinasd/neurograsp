@@ -31,7 +31,7 @@ export const publicIPv4Lookup: LookupFunction = ((hostname: string, options: unk
     if (all) callback(null, safe);
     else callback(null, safe[0].address, safe[0].family);
   }).catch(() => callback(Object.assign(new Error("Panel hostname could not be resolved."), { code: "ENOTFOUND" })));
-}) as LookupFunction;
+}) as unknown as LookupFunction;
 export async function validatePanelBaseUrl(input: string): Promise<string> {
   let url: URL;
   try { url = new URL(input.trim()); } catch { throw new Error("Enter a valid panel URL."); }
