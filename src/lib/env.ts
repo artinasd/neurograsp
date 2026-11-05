@@ -4,7 +4,6 @@ const envSchema = z.object({
   UPSTASH_REDIS_REST_URL: z.string().url(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
   PANEL_CREDENTIALS_ENCRYPTION_KEY: z.string().min(32),
-  SESSION_SECRET: z.string().min(32),
   APP_URL: z.string().url().default("http://localhost:3000")
 });
 
