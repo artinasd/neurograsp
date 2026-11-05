@@ -5,6 +5,7 @@ import { getReservation } from "@/lib/ledger/wallet";
 import { listPanels } from "@/lib/panels/store";
 import { createOperation, newOperationId } from "@/lib/provisioning/store";
 import { runProvisioningOperation } from "@/lib/provisioning/runner";
+import { acquireOperationLock, releaseOperationLock } from "@/lib/provisioning/lock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,9 +59,15 @@ export async function POST(request: NextRequest) {
         groupIds: []
       }
     });
-    const current = await runProvisioningOperation(operation.id);
-    const status = current.state === "completed" ? 200 : current.state === "failed" ? 502 : 202;
-    return NextResponse.json({ operation: current }, { status, headers: { "Cache-Control": "no-store" } });
+    const lock = await acquireOperationLock(operation.id);
+    if (!lock) return NextResponse.json({ error: "This operation is already being processed." }, { status: 409 });
+    try {
+      const current = await runProvisioningOperation(operation.id);
+      const status = current.state === "completed" ? 200 : current.state === "failed" ? 502 : 202;
+      return NextResponse.json({ operation: current }, { status, headers: { "Cache-Control": "no-store" } });
+    } finally {
+      await releaseOperationLock(operation.id, lock);
+    }
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Provisioning could not be started." }, { status: 502 });
   }
