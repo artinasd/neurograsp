@@ -45,7 +45,7 @@ export async function validatePanelBaseUrl(input: string): Promise<string> {
   if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash) {
     throw new Error("Panel URL must use HTTPS and cannot include credentials, query parameters, or a fragment.");
   }
-  const hostname = url.hostname.toLowerCase().replace(/^\\[|\\]$/g, "");
+  const hostname = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
   if (!hostname || hostname === "localhost" || hostname.endsWith(".localhost") || hostname.endsWith(".local") ||
       hostname.endsWith(".internal") || hostname.endsWith(".lan")) throw new Error("Private or local panel destinations are not accepted.");
   const ipType = isIP(hostname);
@@ -59,6 +59,6 @@ export async function validatePanelBaseUrl(input: string): Promise<string> {
       throw new Error("Panel hostname resolves to a private or unsupported address.");
     }
   }
-  url.pathname = url.pathname.replace(/\\/$/, "");
+  url.pathname = url.pathname.replace(/\/$/, "");
   return url.toString().replace(/\\/$/, "");
 }
