@@ -1,7 +1,15 @@
 import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from "node:crypto";
-import { promisify } from "node:util";
-
-const scrypt = promisify(scryptCallback);
+const scrypt = (
+  password: string,
+  salt: Buffer,
+  keyLength: number,
+  options: { N: number; r: number; p: number; maxmem: number }
+): Promise<Buffer> => new Promise((resolve, reject) => {
+  scryptCallback(password, salt, keyLength, options, (error, derived) => {
+    if (error) reject(error);
+    else resolve(derived);
+  });
+});
 const KEY_LENGTH = 64;
 const COST = 16384;
 const BLOCK_SIZE = 8;
