@@ -16,8 +16,22 @@ export async function POST(request: NextRequest, context: { params: { id: string
 
   const existing = await getOperation(context.params.id);
   if (!existing) return NextResponse.json({ error: "Operation not found." }, { status: 404 });
-  if (existing.state === "completed" || existing.state === "failed") {
-    return NextResponse.json({ operation: existing }, { status: 409 });
+  if (existing.state === "failed") {
+    return NextResponse.json({ operation: existing, error: "This operation is final and failed; it cannot be reconciled automatically." }, { status: 409 });
+  }
+  if (existing.state === "completed") {
+    try {
+      const master = await createMasterSubscription({
+        operationId: existing.id,
+        username: existing.username,
+        panelId: existing.panelIds[0],
+        panelIds: existing.panelIds
+      });
+      const url = getEnv().APP_URL.replace(/\/$/, "") + "/sub/" + master.token;
+      return NextResponse.json({ operation: existing, masterSubscription: master.subscription, url }, { status: 200, headers: { "Cache-Control": "no-store" } });
+    } catch (error) {
+      return NextResponse.json({ error: error instanceof Error ? error.message : "Could not retrieve the master URL." }, { status: 502 });
+    }
   }
 
   const token = await acquireOperationLock(context.params.id);
