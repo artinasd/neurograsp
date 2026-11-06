@@ -66,7 +66,8 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Re
       req.end();
     });
     if (responseBytes.status >= 300 && responseBytes.status < 400) throw new Error("Panel redirects are not accepted.");
-    const responseBody: string | null = [204, 205, 304].includes(responseBytes.status) ? null : responseBytes.body.toString("utf8");
+    const responseBody: ArrayBuffer | null = [204, 205, 304].includes(responseBytes.status) ? null :
+      responseBytes.body.buffer.slice(responseBytes.body.byteOffset, responseBytes.body.byteOffset + responseBytes.body.byteLength) as ArrayBuffer;
     return new Response(responseBody, { status: responseBytes.status, headers: responseBytes.headers });
   } finally { clearTimeout(timer); }
 }
