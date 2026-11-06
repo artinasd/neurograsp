@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getEnv } from "@/lib/env";
@@ -16,6 +17,8 @@ const setupSchema = z.object({
   path: ["confirmPassword"],
   message: "Passwords do not match."
 });
+const SETUP_WINDOW_SECONDS = 15 * 60;
+const SETUP_MAX_ATTEMPTS = 5;
 
 function isSameOrigin(request: NextRequest) {
   const origin = request.headers.get("origin");
@@ -25,6 +28,22 @@ function isSameOrigin(request: NextRequest) {
   } catch {
     return false;
   }
+}
+
+function rateLimitKey(request: NextRequest) {
+  const address = request.headers.get("x-real-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+  const digest = createHash("sha256").update(address).digest("hex");
+  return "ng:setup-limit:v1:" + digest;
+}
+
+async function consumeSetupAttempt(key: string) {
+  const script = `
+    local count = redis.call("INCR", KEYS[1])
+    if count == 1 then redis.call("EXPIRE", KEYS[1], ARGV[1]) end
+    return count
+  `;
+  return Number(await redis.eval(script, [key], [String(SETUP_WINDOW_SECONDS)]));
 }
 
 export async function GET() {
@@ -49,6 +68,18 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    if (await redis.get(KEYS.owner)) {
+      return NextResponse.json({ error: "Owner setup has already been completed." }, { status: 409 });
+    }
+
+    const key = rateLimitKey(request);
+    if (await consumeSetupAttempt(key) > SETUP_MAX_ATTEMPTS) {
+      return NextResponse.json({ error: "Too many setup attempts. Try again in 15 minutes." }, {
+        status: 429,
+        headers: { "Cache-Control": "no-store", "Retry-After": String(SETUP_WINDOW_SECONDS) }
+      });
+    }
+
     const passwordHash = await hashPassword(parsed.data.password);
     const ownerRecord = {
       username: parsed.data.username,
